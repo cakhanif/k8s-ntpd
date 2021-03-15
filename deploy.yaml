@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ntpd-config
+data:
+  ntpd.conf: |
+    servers pool.ntp.org
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ntpd
+  labels:
+    app: ntpd
+spec:
+  selector:
+    matchLabels:
+      name: ntpd
+  template:
+    metadata:
+      labels:
+        name: ntpd
+    spec:
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      containers:
+      - name: ntp-sync
+        image: cakhanif/ntpd
+        imagePullPolicy: IfNotPresent
+        resources:
+          limits:
+            memory: 20Mi
+            cpu: 20m
+          requests:
+            cpu: 10m
+            memory: 10Mi
+        securityContext:
+          privileged: true
+        env:
+          - name: NTP_CONF_FILE
+            value: /app/ntpd.conf
+        volumeMounts:
+          - name: ntpd-config
+            mountPath: /app/
+      volumes:
+        - name: ntpd-config
+          configMap:
+            name: ntpd-config
